@@ -168,6 +168,7 @@ end
 local function epoch()
 	local train = assert(io.open("../data_train.csv", "r"), "Failed to open data_train.csv")
 	local loss_sum, epoch_n, count = 0, 0, 0
+	local TP, TN, FP, FN = 0, 0, 0, 0
 
 	for line in train:lines() do
 		local r_index = string.find(line, ",")
@@ -187,11 +188,19 @@ local function epoch()
 		softmax(layers[#layers])
 
 		local P = {}
+
 		for n = 1, #layers[#layers] do table.insert(P, layers[#layers][n].activation) end
 		local Loss = -((result * math.log(math.max(P[1], 1e-15))) + (1 - result) * math.log(math.max(1 - P[1], 1e-15)))
-
+		
 		loss_sum = loss_sum + Loss
 		epoch_n = epoch_n + 1
+
+		local prediction = P[1] > 0.5 and 1 or 0
+
+		if prediction == 1 and result == 1 then TP = TP + 1
+		elseif prediction == 0 and result == 0 then TN = TN + 1
+		elseif prediction == 1 and result == 0 then FP = FP + 1
+		elseif prediction == 0 and result == 1 then FN = FN + 1 end
 
 		backdrop(Loss, P, result, first_input)
 		count = count + 1
@@ -208,7 +217,12 @@ local function epoch()
 		update_weights(count)
 	end
 
-	print(loss_sum / epoch_n)
+	local final_loss = loss_sum / epoch_n
+	local precision = TP / (TP + FP)
+	local recall = TP / (TP + FN)
+	local F1 = 2 * (precision * recall) / (precision + recall)
+
+	print("L: "..final_loss.." P: "..precision.." R: "..recall.." F1: "..F1)
 	train:close()
 end
 
@@ -233,6 +247,52 @@ function shuffle_file(input_path, output_path)
 	out:close()
 end
 
+function ai.test()
+	local val = assert(io.open("../data_val.csv", "r"), "Failed to open data_val.csv")
+	local loss_sum, epoch_n = 0, 0
+	local TP, TN, FP, FN = 0, 0, 0, 0
+
+	for line in val:lines() do
+		local r_index = string.find(line, ",")
+		local input = split(string.sub(line, r_index + 1))
+		local result = (string.sub(line, 1, 1) == "B") and 0 or 1
+
+		for column = 1, #layers do
+			feedforward(input, column)
+
+			input = {}
+			for i = 1, #layers[column] do
+				table.insert(input, layers[column][i].activation or layers[column][i].z)
+			end
+		end
+
+		softmax(layers[#layers])
+
+		local P = {}
+
+		for n = 1, #layers[#layers] do table.insert(P, layers[#layers][n].activation) end
+		local Loss = -((result * math.log(math.max(P[1], 1e-15))) + (1 - result) * math.log(math.max(1 - P[1], 1e-15)))
+		
+		loss_sum = loss_sum + Loss
+		epoch_n = epoch_n + 1
+
+		local prediction = P[1] > 0.5 and 1 or 0
+
+		if prediction == 1 and result == 1 then TP = TP + 1
+		elseif prediction == 0 and result == 0 then TN = TN + 1
+		elseif prediction == 1 and result == 0 then FP = FP + 1
+		elseif prediction == 0 and result == 1 then FN = FN + 1 end
+	end
+
+	local final_loss = loss_sum / epoch_n
+	local precision = TP / (TP + FP)
+	local recall = TP / (TP + FN)
+	local F1 = 2 * (precision * recall) / (precision + recall)
+
+	print("L: "..final_loss.." P: "..precision.." R: "..recall.." F1: "..F1)
+	val:close()
+end
+
 function ai.start_train()
 	setup_neural_network()
 
@@ -243,6 +303,9 @@ function ai.start_train()
 		epoch()
 		shuffle_file("../data_train.csv", "../data_train.csv")
 	end
+
+	print("REAL TEST")
+	ai.test()
 end
 
 return ai
