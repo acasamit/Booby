@@ -18,6 +18,7 @@ params = {
 	{"-l,--layer", function(i) MACRO.HIDED_LAYER = arg[i + 1] end, "specify the number of hided layer", true},
 	{"-ls,--layer-size", function(i) MACRO.HIDED_LAYER_SIZE = arg[i + 1] end, "specify the size of hided layers", true},
 	{"-e,--epoch", function(i) MACRO.EPOCH = arg[i + 1] end, "specify the number of epoch", true},
+	{"-b,--batch", function(i) MACRO.BATCH_SIZE = arg[i + 1] end, "specify the batch size", true},
 }
 
 local function split(str)

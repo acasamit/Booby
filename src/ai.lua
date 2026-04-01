@@ -45,15 +45,23 @@ function setup_neural_network()
 			table.insert(layers[i], {
 				z = 0,
 				weight = {},
-				biase = 0
+				m_weight = {},
+				v_weight = {},
+				biase = 0,
+				m_bias = 0,
+				v_bias = 0,
+				acc_weight_grad = {},
+				acc_bias_grad = 0
 			})
 
 			local size = i == 1 and MACRO.INPUT_LAYER or MACRO.HIDED_LAYER_SIZE
 			for k = 1, size, 1 do
 				table.insert(layers[i][j].weight, xavier_init(size, MACRO.HIDED_LAYER_SIZE))
+				table.insert(layers[i][j].m_weight, 0)
+				table.insert(layers[i][j].v_weight, 0)
+				table.insert(layers[i][j].acc_weight_grad, 0)
 			end
 		end
-
 	end
 
 	layers[#layers + 1] = {}
@@ -63,11 +71,20 @@ function setup_neural_network()
 		table.insert(layers[#layers], {
 			z = 0,
 			weight = {},
-			biase = 0
+			m_weight = {},
+			v_weight = {},
+			biase = 0,
+			m_bias = 0,
+			v_bias = 0,
+			acc_weight_grad = {},
+			acc_bias_grad = 0
 		})
 
 		for j = 1, MACRO.HIDED_LAYER_SIZE, 1 do
 			table.insert(layers[#layers][i].weight, xavier_init(MACRO.HIDED_LAYER_SIZE, MACRO.OUTPUT_LAYER))
+			table.insert(layers[#layers][i].m_weight, 0)
+			table.insert(layers[#layers][i].v_weight, 0)
+			table.insert(layers[#layers][i].acc_weight_grad, 0)
 		end
 	end
 end
@@ -84,6 +101,39 @@ local function feedforward(input, column)
 
 		if column ~= #layers then
 			layers[column][i].activation = math.max(0, layers[column][i].z)
+		end
+	end
+end
+
+local function update_weights(batch_size)
+	for i = 1, #layers do
+		for j = 1, #layers[i] do
+			local n = layers[i][j]
+
+			-- weight
+			for k = 1, #n.weight do
+				local grad = n.acc_weight_grad[k] / batch_size
+				
+				n.m_weight[k] = MACRO.BETA1 * n.m_weight[k] + (1 - MACRO.BETA1) * grad
+				n.v_weight[k] = MACRO.BETA2 * n.v_weight[k] + (1 - MACRO.BETA2) * (grad^2)
+				
+				local mh = n.m_weight[k] / (1 - MACRO.BETA1^MACRO.LINE_READ)
+				local vh = n.v_weight[k] / (1 - MACRO.BETA2^MACRO.LINE_READ)
+				
+				n.weight[k] = n.weight[k] - MACRO.LEARNING_RATE * (mh / (math.sqrt(vh) + MACRO.EPSILON))
+				n.acc_weight_grad[k] = 0
+			end
+
+			-- bias
+			local b_grad = n.acc_bias_grad / batch_size
+			n.m_bias = MACRO.BETA1 * n.m_bias + (1 - MACRO.BETA1) * b_grad
+			n.v_bias = MACRO.BETA2 * n.v_bias + (1 - MACRO.BETA2) * (b_grad^2)
+			
+			local mbh = n.m_bias / (1 - MACRO.BETA1^MACRO.LINE_READ)
+			local vbh = n.v_bias / (1 - MACRO.BETA2^MACRO.LINE_READ)
+			
+			n.biase = n.biase - MACRO.LEARNING_RATE * (mbh / (math.sqrt(vbh) + MACRO.EPSILON))
+			n.acc_bias_grad = 0
 		end
 	end
 end
@@ -105,60 +155,60 @@ local function backdrop(Loss, P, result, input)
 				layers[i][j].delta = P[j] - target
 			end
 
+			layers[i][j].acc_bias_grad = layers[i][j].acc_bias_grad + layers[i][j].delta
+
 			for k = 1, #layers[i][j].weight, 1 do -- weight
-				local gradient
-
-				if i == 1 then
-					gradient = layers[i][j].delta * input[k]
-				else
-					gradient = layers[i][j].delta * layers[i - 1][k].activation
-				end
-
-				layers[i][j].weight[k] = layers[i][j].weight[k] - (MACRO.LEARNING_RATE * gradient)
+				local g = layers[i][j].delta * (i == 1 and input[k] or layers[i-1][k].activation)
+				layers[i][j].acc_weight_grad[k] = layers[i][j].acc_weight_grad[k] + g
 			end
-
-			layers[i][j].biase = layers[i][j].biase - (MACRO.LEARNING_RATE * layers[i][j].delta)
 		end
 	end
 end
 
 local function epoch()
 	local train = assert(io.open("../data_train.csv", "r"), "Failed to open data_train.csv")
-	local result
-
-	local loss_sum = 0
-	local epoch_n = 0
+	local loss_sum, epoch_n, count = 0, 0, 0
 
 	for line in train:lines() do
 		local r_index = string.find(line, ",")
-		local first_input = split(string.sub(line, r_index + 1))
-		local input = first_input
+		local input = split(string.sub(line, r_index + 1))
+		local first_input = input
+		local result = (string.sub(line, 1, 1) == "B") and 0 or 1
 
-		result = string.sub(line, 1, 1)
-		result = result == "B" and 0 or 1
-
-		for column, _ in ipairs(layers) do
+		for column = 1, #layers do
 			feedforward(input, column)
 
-			if column == #layers then
-				softmax(layers[column])
-				local P = {}
-				for n, _ in ipairs(layers[column]) do table.insert(P, layers[column][n].activation) end
-
-				local Loss = -((result * math.log(math.max(P[1], 1e-15))) + (1 - result) * math.log(math.max(1- P[1], 1e-15))) -- BCE
-				loss_sum = loss_sum + Loss
-				epoch_n = epoch_n + 1
-				backdrop(Loss, P, result, first_input)
-			end
-
 			input = {}
-			for i, _ in ipairs(layers[column]) do
-				table.insert(input, layers[column][i].activation)
+			for i = 1, #layers[column] do
+				table.insert(input, layers[column][i].activation or layers[column][i].z)
 			end
+		end
+
+		softmax(layers[#layers])
+
+		local P = {}
+		for n = 1, #layers[#layers] do table.insert(P, layers[#layers][n].activation) end
+		local Loss = -((result * math.log(math.max(P[1], 1e-15))) + (1 - result) * math.log(math.max(1 - P[1], 1e-15)))
+
+		loss_sum = loss_sum + Loss
+		epoch_n = epoch_n + 1
+
+		backdrop(Loss, P, result, first_input)
+		count = count + 1
+
+		if count >= MACRO.BATCH_SIZE then
+			MACRO.LINE_READ = MACRO.LINE_READ + 1
+			update_weights(count)
+			count = 0
 		end
 	end
 
-	print(loss_sum/epoch_n)
+	if count > 0 then
+		MACRO.LINE_READ = MACRO.LINE_READ + 1
+		update_weights(count)
+	end
+
+	print(loss_sum / epoch_n)
 	train:close()
 end
 
@@ -188,6 +238,7 @@ function ai.start_train()
 
 	for i = 1, MACRO.EPOCH, 1 do
 		print("Epoch "..i.."/"..MACRO.EPOCH..":")
+		MACRO.EPOCH_INDEX = i
 
 		epoch()
 		shuffle_file("../data_train.csv", "../data_train.csv")
