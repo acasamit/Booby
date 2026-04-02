@@ -8,7 +8,10 @@ local args = {...}
 function check_for_reload()
 	if MACRO.RELOAD_DATASET or not io.open("../data_train.csv", "r") or not io.open("../data_val.csv", "r") then
 		dataset.reload()
-		os.exit()
+
+		if MACRO.RELOAD_DATASET then
+			os.exit()
+		end
 	end
 end
 
@@ -19,6 +22,8 @@ function check_for_training()
 end
 
 function main()
+	math.randomseed(os.time())
+
 	parsing.parse_args(args)
 
 	if MACRO.PREDICT then

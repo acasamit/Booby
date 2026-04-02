@@ -93,8 +93,6 @@ function dataset.reload()
 	local train = assert(io.open("../data_train.csv", "w"), "Failed to create data_train.csv")
 	local val = assert(io.open("../data_val.csv", "w"), "Failed to create data_val.csv")
 
-	math.randomseed(os.time())
-
 	local M_lines = {}
 	local B_lines = {}
 

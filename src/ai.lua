@@ -219,9 +219,9 @@ local function epoch()
 	end
 
 	local final_loss = loss_sum / epoch_n
-	local precision = TP / (TP + FP)
-	local recall = TP / (TP + FN)
-	local F1 = 2 * (precision * recall) / (precision + recall)
+	local precision = (TP + FP == 0) and 0 or TP / (TP + FP)
+	local recall = (TP + FN == 0) and 0 or TP / (TP + FN)
+	local F1 = (precision + recall == 0) and 0 or 2 * (precision * recall) / (precision + recall)
 
 	print("(Train) L: "..final_loss.." P: "..precision.." R: "..recall.." F1: "..F1)
 	train:close()
@@ -286,9 +286,9 @@ function ai.test()
 	end
 
 	local final_loss = loss_sum / epoch_n
-	local precision = TP / (TP + FP)
-	local recall = TP / (TP + FN)
-	local F1 = 2 * (precision * recall) / (precision + recall)
+	local precision = (TP + FP == 0) and 0 or TP / (TP + FP)
+	local recall = (TP + FN == 0) and 0 or TP / (TP + FN)
+	local F1 = (precision + recall == 0) and 0 or 2 * (precision * recall) / (precision + recall)
 
 	table.insert(history.loss, final_loss)
 	table.insert(history.precision, precision)
@@ -400,7 +400,7 @@ function ai.start_train()
 			best_f1 = current_f1
 			last_best = i
 
-			save_model("../".."MODEL_"..MACRO.HIDED_LAYER.."L_"..MACRO.HIDED_LAYER_SIZE.."LS_"..MACRO.LEARNING_RATE.."LR_"..MACRO.EPOCH.."E"..".lua")
+			save_model("../".."MODEL_"..MACRO.HIDED_LAYER.."L_"..MACRO.HIDED_LAYER_SIZE.."LS_"..MACRO.LEARNING_RATE.."LR_"..MACRO.EPOCH.."E".."_B"..MACRO.BATCH_SIZE..".lua")
 		end
 
 		if MACRO.EARLY_STOPPING > 0 and MACRO.EPOCH_INDEX - last_best >= MACRO.EARLY_STOPPING then
@@ -411,7 +411,7 @@ function ai.start_train()
 		shuffle_file("../data_train.csv", "../data_train.csv")
 	end
 
-	save_run_data("MODEL_"..MACRO.HIDED_LAYER.."L_"..MACRO.HIDED_LAYER_SIZE.."LS_"..MACRO.LEARNING_RATE.."LR_"..MACRO.EPOCH.."E")
+	save_run_data("MODEL_"..MACRO.HIDED_LAYER.."L_"..MACRO.HIDED_LAYER_SIZE.."LS_"..MACRO.LEARNING_RATE.."LR_"..MACRO.EPOCH.."E".."_B"..MACRO.BATCH_SIZE)
 	print("Best Model F1: "..best_f1)
 end
 
