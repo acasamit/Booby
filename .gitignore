@@ -2,3 +2,5 @@ data_train.csv
 data_val.csv
 b1.lua
 data_test.csv
+MODEL*.lua
+graph/data.js

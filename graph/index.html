@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>AI Training Dashboard</title>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<script src="data.js"></script>
+	<style>
+		body {
+			font-family: sans-serif;
+			background: #1a1a1a;
+			color: white;
+			padding: 20px;
+		}
+
+		.container {
+			max-width: 1100px;
+			margin: auto;
+			background: #2d2d2d;
+			padding: 20px;
+			border-radius: 8px;
+		}
+
+		select {
+			padding: 10px;
+			background: #444;
+			color: white;
+			border: none;
+			border-radius: 4px;
+			margin-bottom: 20px;
+		}
+
+		.metrics {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: 12px;
+			margin-bottom: 20px;
+		}
+
+		.metric {
+			background: #3a3a3a;
+			padding: 14px;
+			border-radius: 8px;
+		}
+
+		.metric .label {
+			font-size: 0.9rem;
+			opacity: 0.8;
+			margin-bottom: 6px;
+		}
+
+		.metric .value {
+			font-size: 1.4rem;
+			font-weight: bold;
+		}
+
+		.best-run {
+			background: #3a3a3a;
+			padding: 14px;
+			border-radius: 8px;
+			margin-bottom: 20px;
+		}
+
+		.best-run .label {
+			font-size: 0.9rem;
+			opacity: 0.8;
+			margin-bottom: 6px;
+		}
+
+		.best-run .value {
+			font-size: 1.1rem;
+			font-weight: bold;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h2>Comparaison des Entraînements</h2>
+
+		<select id="runSelector" onchange="updateChart()">
+			<option value="">-- Choisir un entraînement --</option>
+		</select>
+
+		<div class="metrics">
+			<div class="metric">
+				<div class="label">Meilleur Loss</div>
+				<div class="value" id="bestLoss">-</div>
+			</div>
+			<div class="metric">
+				<div class="label">Meilleure Precision</div>
+				<div class="value" id="bestPrecision">-</div>
+			</div>
+			<div class="metric">
+				<div class="label">Meilleur Recall</div>
+				<div class="value" id="bestRecall">-</div>
+			</div>
+			<div class="metric">
+				<div class="label">Meilleur F1</div>
+				<div class="value" id="bestF1">-</div>
+			</div>
+		</div>
+
+		<div class="best-run">
+			<div class="label">Run avec le meilleur F1</div>
+			<div class="value" id="bestRunInfo">-</div>
+		</div>
+
+		<canvas id="myChart"></canvas>
+	</div>
+
+	<script>
+		let myChart = null;
+
+		function round3(value) {
+			return (Math.round(value * 1000) / 1000).toFixed(3);
+		}
+
+		function getBest(values, mode) {
+			const nums = values.map(Number).filter(v => Number.isFinite(v));
+			if (!nums.length) return null;
+			return mode === 'min' ? Math.min(...nums) : Math.max(...nums);
+		}
+
+		function updateMetrics(data) {
+			const bestLoss = getBest(data.loss || [], 'min');
+			const bestPrecision = getBest(data.precision || [], 'max');
+			const bestRecall = getBest(data.recall || [], 'max');
+			const bestF1 = getBest(data.f1 || [], 'max');
+
+			document.getElementById('bestLoss').innerText = bestLoss === null ? '-' : round3(bestLoss);
+			document.getElementById('bestPrecision').innerText = bestPrecision === null ? '-' : round3(bestPrecision);
+			document.getElementById('bestRecall').innerText = bestRecall === null ? '-' : round3(bestRecall);
+			document.getElementById('bestF1').innerText = bestF1 === null ? '-' : round3(bestF1);
+
+			let bestRunName = '-';
+			let bestRunF1 = null;
+
+			Object.entries(window.runs || {}).forEach(([name, run]) => {
+				const value = getBest(run.f1 || [], 'max');
+				if (value !== null && (bestRunF1 === null || value > bestRunF1)) {
+					bestRunF1 = value;
+					bestRunName = name;
+				}
+			});
+
+			document.getElementById('bestRunInfo').innerText = bestRunF1 === null ? '-' : `${bestRunName} — F1 = ${round3(bestRunF1)}`;
+		}
+
+		window.onload = () => {
+			const select = document.getElementById('runSelector');
+			const names = Object.keys(window.runs || {});
+
+			names.forEach(name => {
+				const opt = document.createElement('option');
+				opt.value = name;
+				opt.innerText = name;
+				select.appendChild(opt);
+			});
+
+			if (names.length) {
+				select.value = names[0];
+				updateChart();
+			}
+		};
+
+		function updateChart() {
+			const name = document.getElementById('runSelector').value;
+			const data = window.runs[name];
+			if (!data) return;
+
+			updateMetrics(data);
+
+			if (myChart) myChart.destroy();
+
+			const ctx = document.getElementById('myChart').getContext('2d');
+			myChart = new Chart(ctx, {
+				type: 'line',
+				data: {
+					labels: data.labels,
+					datasets: [
+						{ label: 'Loss', data: data.loss, borderColor: '#ff6384', yAxisID: 'y' },
+						{ label: 'Precision', data: data.precision, borderColor: '#36a2eb', yAxisID: 'y1' },
+						{ label: 'Recall', data: data.recall, borderColor: '#ebdb34', yAxisID: 'y2' },
+						{ label: 'F1-Score', data: data.f1, borderColor: '#3aeb34', yAxisID: 'y3' }
+					]
+				},
+				options: {
+					responsive: true,
+					interaction: { mode: 'index', intersect: false },
+					scales: {
+						y: {
+							type: 'linear',
+							position: 'left',
+							title: { display: true, text: 'Loss' }
+						},
+						y1: {
+							type: 'linear',
+							position: 'right',
+							grid: { drawOnChartArea: false },
+							title: { display: true, text: 'Precision' }
+						},
+						y2: {
+							type: 'linear',
+							position: 'right',
+							grid: { drawOnChartArea: false },
+							title: { display: true, text: 'Recall' }
+						},
+						y3: {
+							type: 'linear',
+							position: 'right',
+							grid: { drawOnChartArea: false },
+							title: { display: true, text: 'F1' }
+						}
+					}
+				}
+			});
+		}
+	</script>
+</body>
+</html>

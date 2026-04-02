@@ -3,6 +3,7 @@ local ai = {}
 local MACRO = require("MACRO")
 
 local layers = {}
+local history = {loss = {}, f1 = {}, epochs = {}, precision = {}, recall = {}}
 
 local function split(str)
 	local result = {}
@@ -222,7 +223,7 @@ local function epoch()
 	local recall = TP / (TP + FN)
 	local F1 = 2 * (precision * recall) / (precision + recall)
 
-	print("L: "..final_loss.." P: "..precision.." R: "..recall.." F1: "..F1)
+	print("(Train) L: "..final_loss.." P: "..precision.." R: "..recall.." F1: "..F1)
 	train:close()
 end
 
@@ -289,7 +290,13 @@ function ai.test()
 	local recall = TP / (TP + FN)
 	local F1 = 2 * (precision * recall) / (precision + recall)
 
-	print("L: "..final_loss.." P: "..precision.." R: "..recall.." F1: "..F1)
+	table.insert(history.loss, final_loss)
+	table.insert(history.precision, precision)
+	table.insert(history.recall, recall)
+	table.insert(history.f1, F1)
+	table.insert(history.epochs, #history.loss)
+
+	print("(Val)   L: "..final_loss.." P: "..precision.." R: "..recall.." F1: "..F1)
 	val:close()
 
 	return F1
@@ -311,6 +318,43 @@ function save_model(filename)
 		file:write("  },\n")
 	end
 	file:write("}\n")
+	file:close()
+end
+
+local function serialize_array(t)
+	local out = {}
+	for i = 1, #t do
+		out[i] = tostring(t[i])
+	end
+	return table.concat(out, ", ")
+end
+
+function save_run_data(run_name)
+	local path = "../graph/data.js"
+	local file_exists = false
+
+	do
+		local f = io.open(path, "r")
+		if f then
+			file_exists = true
+			f:close()
+		end
+	end
+
+	local file = assert(io.open(path, "a"))
+
+	if not file_exists or io.open(path, "r"):seek("end") == 0 then
+		file:write("window.runs = window.runs || {};\n")
+	end
+
+	file:write('window.runs["' .. run_name .. '"] = {\n')
+	file:write("  labels: [" .. serialize_array(history.epochs) .. "],\n")
+	file:write("  loss: [" .. serialize_array(history.loss) .. "],\n")
+	file:write("  precision: [" .. serialize_array(history.precision) .. "],\n")
+	file:write("  recall: [" .. serialize_array(history.recall) .. "],\n")
+	file:write("  f1: [" .. serialize_array(history.f1) .. "]\n")
+	file:write("};\n")
+
 	file:close()
 end
 
@@ -341,6 +385,7 @@ end
 function ai.start_train()
 	setup_neural_network()
 
+	history = {loss = {}, f1 = {}, epochs = {}, precision = {}, recall = {}}
 	local best_f1 = 0
 
 	for i = 1, MACRO.EPOCH, 1 do
@@ -353,12 +398,13 @@ function ai.start_train()
 		if current_f1 > best_f1 then
 			best_f1 = current_f1
 
-			save_model("../b1.lua")
+			save_model("../".."MODEL_"..MACRO.HIDED_LAYER.."L_"..MACRO.HIDED_LAYER_SIZE.."LS_"..MACRO.LEARNING_RATE.."LR_"..MACRO.EPOCH.."E"..".lua")
 		end
 
 		shuffle_file("../data_train.csv", "../data_train.csv")
 	end
 
+	save_run_data("MODEL_"..MACRO.HIDED_LAYER.."L_"..MACRO.HIDED_LAYER_SIZE.."LS_"..MACRO.LEARNING_RATE.."LR_"..MACRO.EPOCH.."E")
 	print("Best Model F1: "..best_f1)
 end
 
