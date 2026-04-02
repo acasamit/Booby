@@ -387,6 +387,7 @@ function ai.start_train()
 
 	history = {loss = {}, f1 = {}, epochs = {}, precision = {}, recall = {}}
 	local best_f1 = 0
+	local last_best = 0
 
 	for i = 1, MACRO.EPOCH, 1 do
 		print("Epoch "..i.."/"..MACRO.EPOCH..":")
@@ -397,8 +398,14 @@ function ai.start_train()
 		local current_f1 = ai.test()
 		if current_f1 > best_f1 then
 			best_f1 = current_f1
+			last_best = i
 
 			save_model("../".."MODEL_"..MACRO.HIDED_LAYER.."L_"..MACRO.HIDED_LAYER_SIZE.."LS_"..MACRO.LEARNING_RATE.."LR_"..MACRO.EPOCH.."E"..".lua")
+		end
+
+		if MACRO.EARLY_STOPPING > 0 and MACRO.EPOCH_INDEX - last_best >= MACRO.EARLY_STOPPING then
+			print("Eartly Stopping the training")
+			break
 		end
 
 		shuffle_file("../data_train.csv", "../data_train.csv")

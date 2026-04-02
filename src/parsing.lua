@@ -16,14 +16,15 @@ params = {
 	{"-h,--help", function() help() end, "display this message"},
 	{"-r,--reload", function() MACRO.RELOAD_DATASET = true end, "reload data.csv and recreate data_train and data_val"},
 	{"-t,--train", function() MACRO.TRAIN = true end, "train the model event if there is a best model file"},
-	{"-l,--layer", function(value) MACRO.HIDED_LAYER = value end, "specify the number of hided layer", true},
-	{"-ls,--layer-size", function(value) MACRO.HIDED_LAYER_SIZE = value end, "specify the size of hided layers", true},
-	{"-e,--epoch", function(value) MACRO.EPOCH = value end, "specify the number of epoch", true},
-	{"-b,--batch", function(value) MACRO.BATCH_SIZE = value end, "specify the batch size", true},
+	{"-l,--layer", function(value) MACRO.HIDED_LAYER = tonumber(value) end, "specify the number of hided layer", true},
+	{"-ls,--layer-size", function(value) MACRO.HIDED_LAYER_SIZE = tonumber(value) end, "specify the size of hided layers", true},
+	{"-e,--epoch", function(value) MACRO.EPOCH = tonumber(value) end, "specify the number of epoch", true},
+	{"-b,--batch", function(value) MACRO.BATCH_SIZE = tonumber(value) end, "specify the batch size", true},
 	{"-o,--output", function(value) MACRO.MODEL_NAME = value end, "specify the output model name", true},
 	{"-m,--model", function(value) MACRO.MODEL_USED = value end, "choose the used model", true},
 	{"-p,--predict", function(value) MACRO.PREDICT = value end, "choose a data file to predict", true},
-	{"-lr,--learning-rate", function(value) MACRO.LEARNING_RATE = value end, "choose a data file to predict", true},
+	{"-lr,--learning-rate", function(value) MACRO.LEARNING_RATE = tonumber(value) end, "set the learning rate", true},
+	{"-es,--early-stopping", function(value) MACRO.EARLY_STOPPING = tonumber(value) end, "set a patience value", true},
 }
 
 local function split(str)
