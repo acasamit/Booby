@@ -16,8 +16,10 @@ function check_for_reload()
 end
 
 function check_for_training()
-	if MACRO.TRAIN or not io.open("../".."MODEL_"..MACRO.HIDED_LAYER.."L_"..MACRO.HIDED_LAYER_SIZE.."LS_"..MACRO.LEARNING_RATE.."LR_"..MACRO.EPOCH.."E"..".lua", "r") then
+	if MACRO.TRAIN or not io.open("../".."MODEL_"..MACRO.HIDED_LAYER.."L_"..MACRO.HIDED_LAYER_SIZE.."LS_"..MACRO.LEARNING_RATE.."LR_"..MACRO.EPOCH.."E".."_B"..MACRO.BATCH_SIZE..".lua", "r") then
 		ai.start_train()
+	else
+		print("There is already a model with this name, if you want to override it use -t")
 	end
 end
 
