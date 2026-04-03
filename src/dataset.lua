@@ -1,5 +1,7 @@
 local dataset = {}
 
+local MACRO = require("MACRO")
+
 local function shuffle(t)
 	for i = #t, 2, -1 do
 		local j = math.random(i)
@@ -66,6 +68,15 @@ local function normalize(train_lines, val_lines) -- min max scaling
 
 	get_min_max(train_lines, train_min, train_max)
 
+	train_min[1] = 0
+	train_max[1] = 0
+
+	local file = assert(io.open("../min_max.lua", "w"), "Failed to create min_max.lua")
+	file:write("return {\n")
+		file:write("  min = {" .. table.concat(train_min, ", ") .. "},\n")
+		file:write("  max = {" .. table.concat(train_max, ", ") .. "},\n")
+	file:write("}\n")
+
 	arg_scaling(train_lines, train_min, train_max)
 	arg_scaling(val_lines, train_min, train_max)
 end
@@ -113,14 +124,48 @@ function dataset.reload()
 	shuffle(M_lines)
 	shuffle(B_lines)
 
-	local split_M = math.floor(#M_lines * 0.8)
-	local split_B = math.floor(#B_lines * 0.8)
+	local split_M = math.floor(#M_lines * MACRO.SPLIT_PERCENT)
+	local split_B = math.floor(#B_lines * MACRO.SPLIT_PERCENT)
 
 	local train_lines = {}
 	local val_lines = {}
 
 	sep_lines(M_lines, split_M, train_lines, val_lines)
 	sep_lines(B_lines, split_B, train_lines, val_lines)
+
+	normalize(train_lines, val_lines) -- min max scaling
+
+	write_lines(train_lines, train, "data_train.csv")
+	write_lines(val_lines, val, "data_val.csv")
+
+	train:close()
+	val:close()
+end
+
+function dataset.force_normalize()
+	local train = assert(io.open("../data_train.csv", "r"), "Failed to open data_train.csv")
+	local val = assert(io.open("../data_val.csv", "r"), "Failed to open data_val.csv")
+
+	local train_lines = {}
+	local val_lines = {}
+
+	for line in train:lines() do
+		local id_index = string.find(line, ",")
+		local line_cpy = string.sub(line, id_index + 1)
+		table.insert(train_lines, line_cpy)
+	end
+
+	for line in val:lines() do
+		local id_index = string.find(line, ",")
+		local line_cpy = string.sub(line, id_index + 1)
+		table.insert(val_lines, line_cpy)
+	end
+
+	train:close()
+	val:close()
+
+	local train = assert(io.open("../data_train.csv", "w"), "Failed to open data_train.csv")
+	local val = assert(io.open("../data_val.csv", "w"), "Failed to open data_val.csv")
 
 	normalize(train_lines, val_lines) -- min max scaling
 

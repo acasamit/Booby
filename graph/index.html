@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 	<meta charset="UTF-8">
-	<title>AI Training Dashboard</title>
+	<title>OncoLink</title>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 	<script src="data.js"></script>
 	<style>
@@ -73,35 +74,36 @@
 		}
 	</style>
 </head>
+
 <body>
 	<div class="container">
-		<h2>Comparaison des Entraînements</h2>
+		<h2>Training Comparison</h2>
 
 		<select id="runSelector" onchange="updateChart()">
-			<option value="">-- Choisir un entraînement --</option>
+			<option value="">-- Select a training run --</option>
 		</select>
 
 		<div class="metrics">
 			<div class="metric">
-				<div class="label">Meilleur Loss</div>
+				<div class="label">Best Loss</div>
 				<div class="value" id="bestLoss">-</div>
 			</div>
 			<div class="metric">
-				<div class="label">Meilleure Precision</div>
+				<div class="label">Best Precision</div>
 				<div class="value" id="bestPrecision">-</div>
 			</div>
 			<div class="metric">
-				<div class="label">Meilleur Recall</div>
+				<div class="label">Best Recall</div>
 				<div class="value" id="bestRecall">-</div>
 			</div>
 			<div class="metric">
-				<div class="label">Meilleur F1</div>
+				<div class="label">Best F1</div>
 				<div class="value" id="bestF1">-</div>
 			</div>
 		</div>
 
 		<div class="best-run">
-			<div class="label">Run avec le meilleur F1</div>
+			<div class="label">Run with the best F1</div>
 			<div class="value" id="bestRunInfo">-</div>
 		</div>
 
@@ -217,4 +219,5 @@
 		}
 	</script>
 </body>
+
 </html>

@@ -26,6 +26,10 @@ function main()
 
 	parsing.parse_args(args)
 
+	if MACRO.FORCE_NORMALIZE then
+		dataset.force_normalize()
+	end
+
 	if MACRO.PREDICT then
 		ai.predict(MACRO.PREDICT)
 		return

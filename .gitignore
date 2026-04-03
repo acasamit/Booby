@@ -2,3 +2,4 @@ data_*csv
 b1.lua
 MODEL*.lua
 graph/data.js
+min_max.lua

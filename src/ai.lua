@@ -416,14 +416,25 @@ function ai.start_train()
 end
 
 function ai.predict(filename)
-	local file = assert(io.open(filename, "r"), "Failed to open "..filename)
 	print("Using file "..filename.."...")
+	local file = assert(io.open(filename, "r"), "Failed to open "..filename)
 
-	load_model(MACRO.MODEL_USED)
 	print("Using model "..MACRO.MODEL_USED.."...")
+	load_model(MACRO.MODEL_USED)
+
+	print("Normalizing data using "..MACRO.MIN_MAX_USED)
+	local data = assert(dofile(MACRO.MIN_MAX_USED), "Failed to open "..MACRO.MIN_MAX_USED)
 
 	for line in file:lines() do
-		local input = split(line)
+		local raw_input = split(line)
+		local input = {}
+
+		for k = 1, #raw_input do
+			local val = raw_input[k]
+			local min = data.min[k + 1]
+			local max = data.max[k + 1]
+			table.insert(input, (val - min) / (max - min))
+		end
 
 		for column = 1, #layers do
 			feedforward(input, column)
