@@ -1,4 +1,4 @@
-# OncoLink
+# OncoScan
 
 A lightweight, from-scratch Multi-Layer Perceptron (MLP) implemented in pure Lua. Designed to classify breast cancer tumors (Malignant/Benign) using a Wisconsin Diagnostic dataset.
 
